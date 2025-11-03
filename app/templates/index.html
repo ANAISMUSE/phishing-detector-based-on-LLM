@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM-based Phishing Email Detection</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- 图标引用 -->
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    
+
+
+    <style>
+        .result-card {
+            display: none;
+            margin-top: 20px;
+        }
+        .threat-high {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .threat-medium {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .threat-low {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="my-4 text-center">
+            <h1>LLM-based Phishing Email Detection System</h1>
+            <p class="lead">Upload an email file to detect traditional, LLM-generated, and hybrid phishing attacks</p>
+        </header>
+        
+        <!-- 上传表单 -->
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Email Upload</h5>
+                
+                <div id="alertContainer"></div>
+                
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="file">Select email file (.eml, .msg, .txt)</label>
+                        <input type="file" class="form-control-file" id="file" name="file" 
+                               accept=".eml,.msg,.txt" required>
+                        <small class="form-text text-muted">Upload an email file to analyze for phishing indicators</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <span id="submitText">Analyze Email</span>
+                    </button>
+                </form>
+                
+                <!-- 加载动画 -->
+                <div class="loading" id="loadingDiv">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Analyzing...</span>
+                    </div>
+                    <p class="mt-2">Analyzing email, please wait...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 分析结果 -->
+        <div class="card mt-4 shadow result-card" id="resultCard">
+            <div class="card-body">
+                <h5 class="card-title">Analysis Results</h5>
+                
+                <div class="alert" id="threatLevel" role="alert">
+                    <h5 id="threatTitle"></h5>
+                    <p id="threatMessage"></p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Detection Details</h6>
+                        <ul id="detectionDetails" class="list-unstyled">
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Risk Indicators</h6>
+                        <ul id="riskIndicators" class="list-unstyled">
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>Analysis Summary</h6>
+                    <div id="analysisSummary" class="p-3 bg-light rounded">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 系统功能说明 -->
+        <div class="card mt-4 shadow">
+            <div class="card-body">
+                <h5 class="card-title">System Features</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <strong>Feature Extraction:</strong> Analyzes email headers, content, URLs, and HTML structure
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Malicious Detection:</strong> Uses both rule-based analysis and advanced LLM analysis
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Attack Types:</strong> Detects traditional phishing, LLM-generated attacks, and hybrid threats
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Comprehensive Results:</strong> Detailed analysis with threat indicators and confidence scores
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-4 mt-4">
+        <p>LLM-based Phishing Email Detection System</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // 获取文件
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showAlert('Please select a file', 'warning');
+                return;
+            }
+            
+            // 显示加载动画
+            document.getElementById('loadingDiv').style.display = 'block';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('resultCard').style.display = 'none';
+            document.getElementById('alertContainer').innerHTML = '';
+            
+            // 创建FormData
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                // 发送POST请求
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                // 隐藏加载动画
+                document.getElementById('loadingDiv').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                
+                if (response.ok && result.success !== false) {
+                    // 显示分析结果
+                    displayResults(result);
+                } else {
+                    // 显示错误信息
+                    showAlert(result.error || 'Analysis failed', 'danger');
+                }
+            } catch (error) {
+                // 隐藏加载动画
+                document.getElementById('loadingDiv').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                
+                console.error('Error:', error);
+                showAlert('An error occurred: ' + error.message, 'danger');
+            }
+        });
+        
+        function displayResults(result) {
+            // 显示结果卡片
+            document.getElementById('resultCard').style.display = 'block';
+            
+            // 设置威胁等级
+            const threatLevel = document.getElementById('threatLevel');
+            const threatTitle = document.getElementById('threatTitle');
+            const threatMessage = document.getElementById('threatMessage');
+            
+            if (result.is_phishing) {
+                threatLevel.className = 'alert alert-danger';
+                threatTitle.innerHTML = '⚠️ Phishing Email Detected!';
+                threatMessage.textContent = `Confidence: ${(result.confidence * 100).toFixed(1)}%`;
+            } else {
+                threatLevel.className = 'alert alert-success';
+                threatTitle.innerHTML = '✓ Email Appears Safe';
+                threatMessage.textContent = `Confidence: ${(result.confidence * 100).toFixed(1)}%`;
+            }
+            
+            // 显示检测详情
+            const detectionDetails = document.getElementById('detectionDetails');
+            detectionDetails.innerHTML = '';
+            
+            if (result.attack_type) {
+                detectionDetails.innerHTML += `<li><strong>Attack Type:</strong> ${result.attack_type}</li>`;
+            }
+            if (result.threat_level) {
+                detectionDetails.innerHTML += `<li><strong>Threat Level:</strong> <span class="threat-${result.threat_level.toLowerCase()}">${result.threat_level}</span></li>`;
+            }
+            
+            // 显示风险指标
+            const riskIndicators = document.getElementById('riskIndicators');
+            riskIndicators.innerHTML = '';
+            
+            if (result.indicators && result.indicators.length > 0) {
+                result.indicators.forEach(indicator => {
+                    riskIndicators.innerHTML += `<li>• ${indicator}</li>`;
+                });
+            } else {
+                riskIndicators.innerHTML = '<li>No significant risk indicators found</li>';
+            }
+            
+            // 显示分析摘要
+            const analysisSummary = document.getElementById('analysisSummary');
+            analysisSummary.textContent = result.details || result.analysis || 'Analysis completed successfully.';
+            
+            // 滚动到结果
+            document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `;
+        }
+    </script>
+
+    <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/js/sw.js')
+    .then(() => console.log('PWA 已激活'))
+    .catch(err => console.error('PWA 注册失败:', err));
+}
+</script>
+
+
+</body>
+</html>
