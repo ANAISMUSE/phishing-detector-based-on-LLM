@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detection Results - Phishing Email Detection</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- 图标引用 -->
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    
+</head>
+<body>
+    <div class="container">
+        <header class="my-4 text-center">
+            <h1>Phishing Email Detection Results</h1>
+            <a href="/" class="btn btn-outline-primary">Analyze Another Email</a>
+        </header>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Analysis Results</h5>
+                <span class="badge badge-light">
+                    {% if result.is_phishing %}
+                        PHISHING DETECTED ({{ (result.confidence * 100)|round|int }}% Confidence)
+                    {% else %}
+                        LEGITIMATE EMAIL ({{ (result.confidence * 100)|round|int }}% Confidence)
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="result-summary mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="alert {% if result.is_phishing %}alert-danger{% else %}alert-success{% endif %}">
+                                <h4 class="alert-heading">
+                                    {% if result.is_phishing %}
+                                        Phishing Email Detected!
+                                    {% else %}
+                                        Legitimate Email
+                                    {% endif %}
+                                </h4>
+                                <p>Attack Type: <strong>{{ result.attack_type }}</strong></p>
+                                <p>Confidence Score: <strong>{{ (result.confidence * 100)|round|int }}%</strong></p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Key Indicators</h5>
+                                    <ul>
+                                        {% for reason in result.rule_based_analysis.reasons[:3] %}
+                                            <li>{{ reason }}</li>
+                                        {% endfor %}
+                                        {% for reason in result.llm_analysis.reasons[:3] %}
+                                            {% if reason not in result.rule_based_analysis.reasons %}
+                                                <li>{{ reason }}</li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <ul class="nav nav-tabs" id="resultTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="summary-tab" data-toggle="tab" href="#summary" role="tab">Analysis Summary</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="details-tab" data-toggle="tab" href="#details" role="tab">Detailed Analysis</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="email-tab" data-toggle="tab" href="#email" role="tab">Email Content</a>
+                    </li>
+                </ul>
+                
+                <div class="tab-content p-3" id="resultTabsContent">
+                    <!-- Analysis Summary Tab -->
+                    <div class="tab-pane fade show active" id="summary" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header">Rule-Based Analysis</div>
+                                    <div class="card-body">
+                                        <p><strong>Score:</strong> {{ result.rule_based_analysis.score }}/100</p>
+                                        <p><strong>Verdict:</strong> 
+                                            {% if result.rule_based_analysis.is_phishing %}
+                                                <span class="text-danger">Phishing</span>
+                                            {% else %}
+                                                <span class="text-success">Legitimate</span>
+                                            {% endif %}
+                                        </p>
+                                        <h6>Key Reasons:</h6>
+                                        <ul>
+                                            {% for reason in result.rule_based_analysis.reasons %}
+                                                <li>{{ reason }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header">LLM Analysis</div>
+                                    <div class="card-body">
+                                        <p><strong>Confidence:</strong> {{ (result.llm_analysis.confidence * 100)|round|int }}%</p>
+                                        <p><strong>Verdict:</strong> 
+                                            {% if result.llm_analysis.is_phishing %}
+                                                <span class="text-danger">Phishing</span>
+                                            {% else %}
+                                                <span class="text-success">Legitimate</span>
+                                            {% endif %}
+                                        </p>
+                                        <p><strong>Attack Type:</strong> {{ result.llm_analysis.attack_type }}</p>
+                                        <h6>Key Reasons:</h6>
+                                        <ul>
+                                            {% for reason in result.llm_analysis.reasons %}
+                                                <li>{{ reason }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                        {% if result.llm_analysis.ai_indicators %}
+                                            <h6>AI-Generation Indicators:</h6>
+                                            <ul>
+                                                {% for indicator in result.llm_analysis.ai_indicators %}
+                                                    <li>{{ indicator }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Detailed Analysis Tab -->
+                    <div class="tab-pane fade" id="details" role="tabpanel">
+                        <div class="accordion" id="featuresAccordion">
+                            <!-- URLs Analysis -->
+                            <div class="card">
+                                <div class="card-header" id="headingURLs">
+                                    <h2 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseURLs">
+                                            URLs Analysis
+                                            {% if features.urls|length > 0 %}
+                                                <span class="badge {% if features.urls|selectattr('suspicious', 'eq', true)|list|length > 0 %}badge-danger{% else %}badge-success{% endif %} float-right">
+                                                    {{ features.urls|length }} URLs found
+                                                </span>
+                                            {% else %}
+                                                <span class="badge badge-secondary float-right">No URLs</span>
+                                            {% endif %}
+                                        </button>
+                                    </h2>
+                                </div>
+                                <div id="collapseURLs" class="collapse" data-parent="#featuresAccordion">
+                                    <div class="card-body">
+                                        {% if features.urls|length > 0 %}
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>URL</th>
+                                                        <th>Display Text</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for url in features.urls %}
+                                                        <tr {% if url.suspicious or url.mismatch %}class="table-danger"{% endif %}>
+                                                            <td><code>{{ url.url }}</code></td>
+                                                            <td>{{ url.visible_text or "-" }}</td>
+                                                            <td>
+                                                                {% if url.suspicious %}
+                                                                    <span class="badge badge-danger">Suspicious</span>
+                                                                {% endif %}
+                                                                {% if url.mismatch %}
+                                                                    <span class="badge badge-danger">Text Mismatch</span>
+                                                                {% endif %}
+                                                                {% if not url.suspicious and not url.mismatch %}
+                                                                    <span class="badge badge-success">OK</span>
+                                                                {% endif %}
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% else %}
+                                            <p>No URLs found in the email.</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Sender Analysis -->
+                            <div class="card">
+                                <div class="card-header" id="headingSender">
+                                    <h2 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseSender">
+                                            Sender Analysis
+                                            {% if features.sender_analysis.mismatch or features.sender_analysis.spoofing_indicators|length > 0 %}
+                                                <span class="badge badge-danger float-right">Suspicious</span>
+                                            {% else %}
+                                                <span class="badge badge-success float-right">OK</span>
+                                            {% endif %}
+                                        </button>
+                                    </h2>
+                                </div>
+                                <div id="collapseSender" class="collapse" data-parent="#featuresAccordion">
+                                    <div class="card-body">
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <th>From</th>
+                                                <td>{{ features.sender_analysis.from }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Reply-To</th>
+                                                <td>{{ features.sender_analysis.reply_to or "-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Return-Path</th>
+                                                <td>{{ features.sender_analysis.return_path or "-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Mismatch</th>
+                                                <td>
+                                                    {% if features.sender_analysis.mismatch %}
+                                                        <span class="text-danger">Yes - Potential Spoofing</span>
+                                                    {% else %}
+                                                        <span class="text-success">No</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        {% if features.sender_analysis.spoofing_indicators|length > 0 %}
+                                            <h6 class="mt-3">Spoofing Indicators:</h6>
+                                            <ul>
+                                                {% for indicator in features.sender_analysis.spoofing_indicators %}
+                                                    <li class="text-danger">{{ indicator }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Content Analysis -->
+                            <div class="card">
+                                <div class="card-header" id="headingContent">
+                                    <h2 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseContent">
+                                            Content Analysis
+                                            {% if features.content_analysis.sensitive_keywords|length > 0 or features.content_analysis.urgency_indicators|length > 0 %}
+                                                <span class="badge badge-warning float-right">Suspicious Content</span>
+                                            {% else %}
+                                                <span class="badge badge-success float-right">OK</span>
+                                            {% endif %}
+                                        </button>
+                                    </h2>
+                                </div>
+                                <div id="collapseContent" class="collapse" data-parent="#featuresAccordion">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6>Suspicious Keywords</h6>
+                                                {% if features.content_analysis.sensitive_keywords %}
+                                                    <ul>
+                                                        {% for keyword in features.content_analysis.sensitive_keywords %}
+                                                            <li>{{ keyword }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                {% else %}
+                                                    <p>None detected</p>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6>Urgency Indicators</h6>
+                                                {% if features.content_analysis.urgency_indicators %}
+                                                    <ul>
+                                                        {% for indicator in features.content_analysis.urgency_indicators %}
+                                                            <li>{{ indicator }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                {% else %}
+                                                    <p>None detected</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row mt-3">
+                                            <div class="col-md-6">
+                                                <h6>Suspicious Requests</h6>
+                                                {% if features.content_analysis.suspicious_requests %}
+                                                    <ul>
+                                                        {% for request in features.content_analysis.suspicious_requests %}
+                                                            <li>{{ request }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                {% else %}
+                                                    <p>None detected</p>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6>Threat Indicators</h6>
+                                                {% if features.content_analysis.threat_indicators %}
+                                                    <ul>
+                                                        {% for threat in features.content_analysis.threat_indicators %}
+                                                            <li>{{ threat }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                {% else %}
+                                                    <p>None detected</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <h6>Urgency Analysis</h6>
+                                            <p>Urgency Level: 
+                                                <span class="badge 
+                                                    {% if features.urgency_score.level == 'High' %}badge-danger
+                                                    {% elif features.urgency_score.level == 'Medium' %}badge-warning
+                                                    {% else %}badge-success{% endif %}">
+                                                    {{ features.urgency_score.level }}
+                                                </span>
+                                                (Score: {{ features.urgency_score.score|round(1) }})
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- HTML Features -->
+                            <div class="card">
+                                <div class="card-header" id="headingHTML">
+                                    <h2 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseHTML">
+                                            HTML Analysis
+                                            {% if features.html_features.hidden_content or features.html_features.invisible_text or features.html_features.obfuscation_techniques|length > 0 %}
+                                                <span class="badge badge-danger float-right">Suspicious HTML</span>
+                                            {% else %}
+                                                <span class="badge badge-success float-right">OK</span>
+                                            {% endif %}
+                                        </button>
+                                    </h2>
+                                </div>
+                                <div id="collapseHTML" class="collapse" data-parent="#featuresAccordion">
+                                    <div class="card-body">
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <th>Hidden Content</th>
+                                                <td>
+                                                    {% if features.html_features.hidden_content %}
+                                                        <span class="text-danger">Yes</span>
+                                                    {% else %}
+                                                        <span class="text-success">No</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Invisible Text</th>
+                                                <td>
+                                                    {% if features.html_features.invisible_text %}
+                                                        <span class="text-danger">Yes</span>
+                                                    {% else %}
+                                                        <span class="text-success">No</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Script Tags</th>
+                                                <td>
+                                                    {{ features.html_features.script_tags }}
+                                                    {% if features.html_features.script_tags > 0 %}
+                                                        <span class="text-warning ml-2">(Potential active content)</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Form Fields</th>
+                                                <td>
+                                                    {{ features.html_features.form_fields }}
+                                                    {% if features.html_features.form_fields > 0 %}
+                                                        <span class="text-warning ml-2">(Data collection forms present)</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        {% if features.html_features.obfuscation_techniques|length > 0 %}
+                                            <h6 class="mt-3">Obfuscation Techniques:</h6>
+                                            <ul>
+                                                {% for technique in features.html_features.obfuscation_techniques %}
+                                                    <li class="text-danger">{{ technique }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Linguistic Features -->
+                            <div class="card">
+                                <div class="card-header" id="headingLinguistic">
+                                    <h2 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseLinguistic">
+                                            Linguistic Analysis
+                                            {% if features.linguistic_features.grammar_issues > 0 %}
+                                                <span class="badge badge-warning float-right">Grammar Issues</span>
+                                            {% else %}
+                                                <span class="badge badge-success float-right">OK</span>
+                                            {% endif %}
+                                        </button>
+                                    </h2>
+                                </div>
+                                <div id="collapseLinguistic" class="collapse" data-parent="#featuresAccordion">
+                                    <div class="card-body">
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <th>Language Complexity</th>
+                                                <td>{{ features.linguistic_features.language_complexity|round(2) }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Grammar Issues</th>
+                                                <td>
+                                                    {{ features.linguistic_features.grammar_issues }}
+                                                    {% if features.linguistic_features.grammar_issues > 0 %}
+                                                        <span class="text-warning ml-2">(Potential grammar problems)</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Average Sentence Length</th>
+                                                <td>{{ features.linguistic_features.avg_sentence_length|round(2) }} words</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Vocabulary Diversity</th>
+                                                <td>{{ features.linguistic_features.vocabulary_diversity|round(2) }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Formality Score</th>
+                                                <td>{{ features.linguistic_features.formality_score|round(2) }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Email Content Tab -->
+                    <div class="tab-pane fade" id="email" role="tabpanel">
+                        <div class="card mb-3">
+                            <div class="card-header">Email Headers</div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    {% for key, value in email.headers.items() %}
+                                        <tr>
+                                            <th>{{ key }}</th>
+                                            <td>{{ value }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">Email Body</div>
+                            <div class="card-body">
+                                <ul class="nav nav-tabs" id="emailContentTabs" role="tablist">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" id="text-tab" data-toggle="tab" href="#text" role="tab">Plain Text</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" id="html-tab" data-toggle="tab" href="#html" role="tab">HTML</a>
+                                    </li>
+                                </ul>
+                                
+                                <div class="tab-content p-3" id="emailContentTabsContent">
+                                    <div class="tab-pane fade show active" id="text" role="tabpanel">
+                                        <pre class="email-content">{{ email.body.plain }}</pre>
+                                    </div>
+                                    <div class="tab-pane fade" id="html" role="tabpanel">
+                                        <div class="html-preview border p-3">
+                                            {{ email.body.html|safe }}
+                                        </div>
+                                        <hr>
+                                        <p><strong>HTML Source:</strong></p>
+                                        <pre class="email-content"><code>{{ email.body.html }}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if email.attachments|length > 0 %}
+                            <div class="card mt-3">
+                                <div class="card-header">Attachments</div>
+                                <div class="card-body">
+                                    <ul>
+                                        {% for attachment in email.attachments %}
+                                            <li>
+                                                {{ attachment.filename }} 
+                                                <small class="text-muted">({{ attachment.content_type }})</small>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-4 mt-4">
+        <p>LLM-based Phishing Email Detection System</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <!-- Popper.js -->
+<script src="https://lib.baomitu.com/popper.js/1.16.1/umd/popper.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://lib.baomitu.com/twitter-bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>

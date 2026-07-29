@@ -1,0 +1,65 @@
+{
+  "_note": "手工构造的标注测试夹具（illustrative fixtures），用于验证检测管线的可运行性与离线指标计算。它们不是真实世界基准——请用 PhishTank / Nazario / Enron-Spam 等公开数据集替换本文件后，再对外报告 P/R/F1 数字。",
+  "samples": [
+    {
+      "id": "legit-01",
+      "label": "legit",
+      "attack_type": "none",
+      "raw": "From: newsletter@github.com\nTo: user@example.com\nSubject: Your weekly repository digest\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nHi, here is your weekly digest of activity across the repositories you watch. No action is required. You can change your notification settings at any time."
+    },
+    {
+      "id": "phish-01",
+      "label": "phishing",
+      "attack_type": "traditional",
+      "raw": "From: security-paypal@paypa1-secure.com\nTo: user@example.com\nSubject: Urgent: Verify your PayPal account now\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nDear customer, your account will be suspended within 24 hours. Click the link to verify your password immediately: http://paypa1-secure.com/login. Failure to act now will result in limited access."
+    },
+    {
+      "id": "phish-02",
+      "label": "phishing",
+      "attack_type": "traditional",
+      "raw": "From: alert@192.168.1.50\nTo: user@example.com\nSubject: Account suspended - confirm your banking details\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nYour bank account has been compromised. Please update your login details using the form below. This is a required action; legal action may follow if you do not respond promptly."
+    },
+    {
+      "id": "legit-02",
+      "label": "legit",
+      "attack_type": "none",
+      "raw": "From: alice@friend.com\nTo: user@example.com\nSubject: Lunch tomorrow?\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nHey, are you free for lunch around noon? Thought we could try that new place near the office. Let me know!"
+    },
+    {
+      "id": "phish-03",
+      "label": "phishing",
+      "attack_type": "ai-generated",
+      "raw": "From: no-reply@microsoft-account-update.com\nTo: user@example.com\nSubject: Important information regarding your Microsoft services\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nWe are writing to inform you that a recent sign-in attempt from an unrecognised device was detected on your account. For your security, we recommend that you verify your identity at your earliest convenience. Please follow the secure link provided below to confirm your credentials and prevent any interruption to your services. We appreciate your prompt attention to this matter."
+    },
+    {
+      "id": "phish-04",
+      "label": "phishing",
+      "attack_type": "traditional",
+      "raw": "From: support@yourbank.com\nReply-To: fraud@phishing-collector.xyz\nTo: user@example.com\nSubject: Confirm your account\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nPlease confirm your account by providing your login details. Open the attachment to proceed."
+    },
+    {
+      "id": "legit-03",
+      "label": "legit",
+      "attack_type": "none",
+      "raw": "From: hr@company.com\nTo: user@example.com\nSubject: Q3 all-hands meeting notes\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nThanks everyone for joining the all-hands. Slides are attached for reference. No action needed unless you own a follow-up item."
+    },
+    {
+      "id": "phish-05",
+      "label": "phishing",
+      "attack_type": "hybrid",
+      "raw": "From: billing@amaz0n-account.com\nTo: user@example.com\nSubject: Unusual activity detected on your Amazon account\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nWe detected unusual activity and have temporarily limited access to your account. To restore access, please verify your account within 24 hours using the secure form. This is a required action; failure to comply may result in permanent suspension. Our automated system generated this notice to protect your security."
+    },
+    {
+      "id": "phish-06",
+      "label": "phishing",
+      "attack_type": "traditional",
+      "raw": "From: it-support@corp-internal.xyz\nTo: user@example.com\nSubject: Enable macros to receive your document\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nOpen the attachment and enable macros to view the secure document. The file is time sensitive."
+    },
+    {
+      "id": "legit-04",
+      "label": "legit",
+      "attack_type": "none",
+      "raw": "From: orders@shop.com\nTo: user@example.com\nSubject: Your order has shipped\nDate: Mon, 28 Jul 2026 09:00:00 +0000\n\nYour order #10293 has shipped and is expected to arrive in 3-5 business days. Track it anytime from your account page. Thank you for your purchase."
+    }
+  ]
+}
